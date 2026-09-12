@@ -1,13 +1,29 @@
-package com.example.doccloudmanager
-
-import android.app.Application
-import com.google.firebase.FirebaseApp
-
-class DocCloudApp : Application() {
-    override fun onCreate() {
-        super.onCreate()
-        runCatching {
-            FirebaseApp.initializeApp(this)
+{
+  "project_info": {
+    "project_number": "123456789012",
+    "project_id": "doc-cloud-manager",
+    "storage_bucket": "doc-cloud-manager.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:123456789012:android:abcdef1234567890",
+        "android_client_info": {
+          "package_name": "com.example.doccloudmanager"
         }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDummyKeyForBuildOnly12345678"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
     }
+  ],
+  "configuration_version": "1"
 }
