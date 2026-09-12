@@ -36,7 +36,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
-    // إسناد الموديل بالطريقة الآمنة لمنع الـ Lifecycle Crash
     val viewModel: MainViewModel = viewModel()
 
     NavHost(
