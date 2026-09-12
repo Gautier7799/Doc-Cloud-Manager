@@ -15,16 +15,16 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
-class FirebaseRepository(
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val storage: FirebaseStorage = FirebaseStorage.getInstance(),
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
-) {
+class FirebaseRepository {
+
+    // التعديل الجوهري: استخدام get() يمنع كراش التشغيل الأول عند غياب التهيئة
+    private val firestore: FirebaseFirestore get() = FirebaseFirestore.getInstance()
+    private val storage: FirebaseStorage get() = FirebaseStorage.getInstance()
+    private val auth: FirebaseAuth get() = FirebaseAuth.getInstance()
 
     private val currentUserId: String
-        get() = auth.currentUser?.uid ?: "guest_user"
+        get() = runCatching { auth.currentUser?.uid }.getOrNull() ?: "guest_user"
 
-    // 1. رفع ملف جديد إلى Cloud Storage مع حفظ بياناته في Firestore
     suspend fun uploadDocument(
         fileUri: Uri,
         title: String,
@@ -37,7 +37,6 @@ class FirebaseRepository(
         val storagePath = "users/$currentUserId/documents/$docId.$extension"
         val storageRef = storage.reference.child(storagePath)
 
-        // رفع الملف
         storageRef.putFile(fileUri).await()
         val downloadUrl = storageRef.downloadUrl.await().toString()
 
@@ -47,12 +46,11 @@ class FirebaseRepository(
             title = title,
             fileUrl = downloadUrl,
             storagePath = storagePath,
-            fileType = fileType,
+            fileType = fileType.name,
             sizeBytes = sizeBytes,
             tags = tags
         )
 
-        // حفظ بيانات الوثيقة في Firestore
         firestore.collection("documents")
             .document(docId)
             .set(newDoc)
@@ -61,7 +59,6 @@ class FirebaseRepository(
         newDoc
     }
 
-    // 2. إنشاء ملف نصي جديد مباشرة (TXT Editor)
     suspend fun createTextDocument(
         title: String,
         content: String,
@@ -81,7 +78,7 @@ class FirebaseRepository(
             title = title,
             fileUrl = downloadUrl,
             storagePath = storagePath,
-            fileType = FileType.TXT,
+            fileType = "TXT",
             sizeBytes = bytes.size.toLong(),
             tags = tags
         )
@@ -94,35 +91,37 @@ class FirebaseRepository(
         newDoc
     }
 
-    // 3. التدفّق اللحظي للوثائق مع دعم البحث بكلمة مفتاحية
     fun getDocumentsFlow(searchQuery: String = ""): Flow<List<DocumentModel>> = callbackFlow {
-        var query = firestore.collection("documents")
-            .whereEqualTo("userId", currentUserId)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
-
-        val listener = query.addSnapshotListener { snapshot, error ->
-            if (error != null) {
-                close(error)
-                return@addSnapshotListener
-            }
-            if (snapshot != null) {
-                val docs = snapshot.toObjects(DocumentModel::class.java)
-                val filteredDocs = if (searchQuery.isBlank()) {
-                    docs
-                } else {
-                    docs.filter { doc ->
-                        doc.title.contains(searchQuery, ignoreCase = true) ||
-                                doc.tags.any { tag -> tag.contains(searchQuery, ignoreCase = true) } ||
-                                doc.summary.contains(searchQuery, ignoreCase = true)
+        val listener = try {
+            firestore.collection("documents")
+                .whereEqualTo("userId", currentUserId)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        trySend(emptyList())
+                        return@addSnapshotListener
+                    }
+                    if (snapshot != null) {
+                        val docs = snapshot.toObjects(DocumentModel::class.java)
+                        val filteredDocs = if (searchQuery.isBlank()) {
+                            docs
+                        } else {
+                            docs.filter { doc ->
+                                doc.title.contains(searchQuery, ignoreCase = true) ||
+                                        doc.tags.any { tag -> tag.contains(searchQuery, ignoreCase = true) } ||
+                                        doc.summary.contains(searchQuery, ignoreCase = true)
+                            }
+                        }
+                        trySend(filteredDocs)
                     }
                 }
-                trySend(filteredDocs)
-            }
+        } catch (e: Exception) {
+            trySend(emptyList())
+            null
         }
-        awaitClose { listener.remove() }
+        awaitClose { listener?.remove() }
     }
 
-    // 4. حفظ الملاحظات الخاصة بالوثيقة
     suspend fun addNote(
         documentId: String,
         title: String,
@@ -146,25 +145,28 @@ class FirebaseRepository(
             .await()
     }
 
-    // 5. جلب الملاحظات المرتبطة بوثيقة معينة
     fun getNotesFlow(documentId: String): Flow<List<NoteModel>> = callbackFlow {
-        val listener = firestore.collection("documents")
-            .document(documentId)
-            .collection("notes")
-            .orderBy("createdAt", Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    close(error)
-                    return@addSnapshotListener
+        val listener = try {
+            firestore.collection("documents")
+                .document(documentId)
+                .collection("notes")
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        trySend(emptyList())
+                        return@addSnapshotListener
+                    }
+                    if (snapshot != null) {
+                        trySend(snapshot.toObjects(NoteModel::class.java))
+                    }
                 }
-                if (snapshot != null) {
-                    trySend(snapshot.toObjects(NoteModel::class.java))
-                }
-            }
-        awaitClose { listener.remove() }
+        } catch (e: Exception) {
+            trySend(emptyList())
+            null
+        }
+        awaitClose { listener?.remove() }
     }
 
-    // 6. حفظ التلخيص للوثيقة
     suspend fun updateSummary(documentId: String, summary: String): Result<Unit> = runCatching {
         firestore.collection("documents")
             .document(documentId)
@@ -172,7 +174,6 @@ class FirebaseRepository(
             .await()
     }
 
-    // 7. حفظ فصل مقتطع (Chapter)
     suspend fun saveExtractedChapter(chapter: ChapterModel): Result<Unit> = runCatching {
         val chapterId = if (chapter.id.isBlank()) UUID.randomUUID().toString() else chapter.id
         val finalChapter = chapter.copy(id = chapterId)
@@ -184,10 +185,9 @@ class FirebaseRepository(
             .await()
     }
 
-    // 8. حذف وثيقة وملفها من السحاب
     suspend fun deleteDocument(doc: DocumentModel): Result<Unit> = runCatching {
         if (doc.storagePath.isNotBlank()) {
-            storage.reference.child(doc.storagePath).delete().await()
+            runCatching { storage.reference.child(doc.storagePath).delete().await() }
         }
         firestore.collection("documents").document(doc.id).delete().await()
     }
