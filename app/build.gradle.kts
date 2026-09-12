@@ -1,7 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("com.google.gms.google-services")
+    // تم حذف google-services من أعلى الملف
 }
 
 android {
@@ -76,3 +76,6 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
+
+// تطبيق الإضافة في آخر الملف يمنع الفحص المبكر ويحل التعارض نهائياً
+apply(plugin = "com.google.gms.google-services")
