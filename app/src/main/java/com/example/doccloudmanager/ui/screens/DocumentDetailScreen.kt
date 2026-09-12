@@ -26,6 +26,15 @@ fun DocumentDetailScreen(
     val notes by viewModel.notesState.collectAsState()
     val context = LocalContext.current
 
+    // منع الـ Crash أثناء التنقل الرجعي عندما تكون البيانات null
+    LaunchedEffect(document) {
+        if (document == null) {
+            onBackClick()
+        }
+    }
+
+    if (document == null) return
+
     var selectedTab by remember { mutableIntStateOf(0) }
     var noteTitle by remember { mutableStateOf("") }
     var noteContent by remember { mutableStateOf("") }
@@ -33,15 +42,10 @@ fun DocumentDetailScreen(
 
     val tabs = listOf("التلخيص", "الملاحظات")
 
-    if (document == null) {
-        onBackClick()
-        return
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(document?.title ?: "تفاصيل المستند") },
+                title = { Text(document?.title ?: "") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "رجوع")
@@ -76,24 +80,22 @@ fun DocumentDetailScreen(
 
             when (selectedTab) {
                 0 -> {
-                    // تبويب التلخيص
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("ملخص المستند (AI):", style = MaterialTheme.typography.titleMedium)
                         Spacer(modifier = Modifier.height(8.dp))
                         Card(modifier = Modifier.fillMaxWidth()) {
                             Text(
-                                text = if (document?.summary.isNullOfBlank()) "لا يوجد تلخيص متاح لهذا المستند بعد." else document!!.summary,
+                                text = if (document?.summary.isNullOrBlank()) "لا يوجد تلخيص متاح لهذا المستند بعد." else document!!.summary,
                                 modifier = Modifier.padding(16.dp)
                             )
                         }
                     }
                 }
                 1 -> {
-                    // تبويب الملاحظات
                     Box(modifier = Modifier.fillMaxSize()) {
                         if (notes.isEmpty()) {
                             Text(
-                                "لا توجد ملاحظات مضافه",
+                                "لا توجد ملاحظات مضافة",
                                 modifier = Modifier.align(Alignment.Center)
                             )
                         } else {
@@ -165,8 +167,6 @@ fun DocumentDetailScreen(
         )
     }
 }
-
-private fun String?.isNullOfBlank(): Boolean = this == null || this.isBlank()
 
 private fun shareDocumentLink(context: Context, title: String, url: String) {
     val sendIntent = Intent().apply {
