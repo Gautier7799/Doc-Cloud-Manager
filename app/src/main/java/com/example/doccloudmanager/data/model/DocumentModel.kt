@@ -9,7 +9,7 @@ data class DocumentModel(
     val title: String = "",
     val fileUrl: String = "",
     val storagePath: String = "",
-    val fileType: String = "TXT", // تم التغيير إلى String لمنع كراش Firestore
+    val fileType: String = "TXT",
     val sizeBytes: Long = 0L,
     val tags: List<String> = emptyList(),
     val summary: String = "",
