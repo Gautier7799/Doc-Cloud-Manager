@@ -22,8 +22,12 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
 
+    # إنشاء ملف gradlew تلقائياً في السحاب قبل البناء
+    - name: Generate Gradle Wrapper
+      run: gradle wrapper
+
     - name: Make gradlew executable
-      run: chmod +x gradlew || true
+      run: chmod +x gradlew
 
     - name: Build Debug APK
       run: ./gradlew assembleDebug --no-daemon
