@@ -7,8 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -36,45 +36,30 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
-    // مشاركة نفس الـ ViewModel بين الشاشة الرئيسية وشاشة التفاصيل لنقل البيانات المحددة
-    val viewModel = remember { MainViewModel() }
+    // إسناد الموديل بالطريقة الآمنة لمنع الـ Lifecycle Crash
+    val viewModel: MainViewModel = viewModel()
 
     NavHost(
         navController = navController,
         startDestination = "main"
     ) {
-        // 1. الشاشة الرئيسية (قائمة المستندات والبحث)
         composable("main") {
             MainScreen(
                 viewModel = viewModel,
-                onDocumentClick = {
-                    navController.navigate("detail")
-                },
-                onCreateNewTxtClick = {
-                    navController.navigate("text_editor")
-                }
+                onDocumentClick = { navController.navigate("detail") },
+                onCreateNewTxtClick = { navController.navigate("text_editor") }
             )
         }
-
-        // 2. شاشة تفاصيل المستند (التلخيص، الملاحظات، والمشاركة)
         composable("detail") {
             DocumentDetailScreen(
                 viewModel = viewModel,
-                onBackClick = {
-                    navController.popBackStack()
-                }
+                onBackClick = { navController.popBackStack() }
             )
         }
-
-        // 3. شاشة محرر النصوص TXT (الإنشاء والتنسيق والحفظ السحابي)
         composable("text_editor") {
             TextEditorScreen(
-                onBackClick = {
-                    navController.popBackStack()
-                },
-                onSaveSuccess = {
-                    navController.popBackStack()
-                }
+                onBackClick = { navController.popBackStack() },
+                onSaveSuccess = { navController.popBackStack() }
             )
         }
     }
