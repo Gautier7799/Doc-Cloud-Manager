@@ -26,7 +26,6 @@ fun DocumentDetailScreen(
     val notes by viewModel.notesState.collectAsState()
     val context = LocalContext.current
 
-    // منع الـ Crash أثناء التنقل الرجعي عندما تكون البيانات null
     LaunchedEffect(document) {
         if (document == null) {
             onBackClick()
