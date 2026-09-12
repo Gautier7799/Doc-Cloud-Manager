@@ -17,7 +17,6 @@ import java.util.UUID
 
 class FirebaseRepository {
 
-    // التعديل الجوهري: استخدام get() يمنع كراش التشغيل الأول عند غياب التهيئة
     private val firestore: FirebaseFirestore get() = FirebaseFirestore.getInstance()
     private val storage: FirebaseStorage get() = FirebaseStorage.getInstance()
     private val auth: FirebaseAuth get() = FirebaseAuth.getInstance()
